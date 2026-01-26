@@ -10,8 +10,7 @@ void setup() {
   // Initialise l'écran LCD
   Wire1.setPins(15, 5);
   lcd.begin(16, 2, LCD_5x8DOTS, Wire1);
-  lcd.printf("Trieur de balles");
-
+    lcd.printf("Trieur de balles");
 }
 
 void loop() {
