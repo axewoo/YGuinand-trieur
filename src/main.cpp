@@ -1,5 +1,8 @@
 #include <Arduino.h>
 #include "rgb_lcd.h"
+#include <ESP32Encoder.h>
+
+ESP32Encoder encoder;
 
 rgb_lcd lcd;
 const int PWM_CHANNEL = 0;     // ESP32 has 16 channels which can generate 16 independent waveforms
@@ -24,12 +27,13 @@ void setup() {
   pinMode(27, OUTPUT); //PWM 
   pinMode(26, OUTPUT); //Signal Sens
   pinMode(25, OUTPUT); //Motor Disable
+  
+  encoder.attachHalfQuad(23, 19);
+  encoder.setCount(0); // Initialize encoder count to 0
 
   // Configure PWM on pin 27: 25 kHz, 8-bit resolution (0-255)
   ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
   ledcAttachPin(27, PWM_CHANNEL);
-
-
 }
 
 void loop() {
@@ -42,9 +46,11 @@ void loop() {
   bool etatBouton1 = !raw1;
   bool etatBouton2 = !raw2;
 
-  Serial.printf("Bouton0: %d, Bouton1: %d, Bouton2: %d\n", etatBouton0, etatBouton1, etatBouton2);
-  Serial.printf("Potentiometre: %d\n", potValue);
-  
+  // Read encoder value
+  int32_t encoderValue = encoder.getCount();
+
+  // Serial output for encoder
+  Serial.printf("Encoder: %d\n", encoderValue);
 
   // Control motor based on potentiometer value
     ledcWrite(PWM_CHANNEL, potValue); //0 -> 2047
@@ -54,6 +60,7 @@ void loop() {
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("B0:"); lcd.print(potValue);
+  lcd.print(" Enc:"); lcd.print(encoderValue);
 
   delay(200);
 }
