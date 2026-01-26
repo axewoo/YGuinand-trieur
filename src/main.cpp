@@ -2,6 +2,9 @@
 #include "rgb_lcd.h"
 
 rgb_lcd lcd;
+const int PWM_CHANNEL = 0;     // ESP32 has 16 channels which can generate 16 independent waveforms
+const int PWM_FREQ = 25000;      // Recall that Arduino Uno is ~490 Hz. Official ESP32 example uses 5,000Hz
+const int PWM_RESOLUTION = 11; // 11 bits of resolution: 0-2047
 
 void setup() {
   // Initialise la liaison avec le terminal
@@ -17,6 +20,16 @@ void setup() {
   pinMode(2, INPUT_PULLUP); // Bouton1 (active low)
   pinMode(12, INPUT_PULLUP); // Bouton2 (active low)
   pinMode(33, INPUT); //Potentiomètre
+
+  pinMode(27, OUTPUT); //PWM 
+  pinMode(26, OUTPUT); //Signal Sens
+  pinMode(25, OUTPUT); //Motor Disable
+
+  // Configure PWM on pin 27: 25 kHz, 8-bit resolution (0-255)
+  ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
+  ledcAttachPin(27, PWM_CHANNEL);
+
+
 }
 
 void loop() {
@@ -24,21 +37,23 @@ void loop() {
   int raw0 = digitalRead(0);
   int raw1 = digitalRead(2);
   int raw2 = digitalRead(12);
-  int potValue = analogRead(33);
+  int potValue = (analogRead(33)/2);
   bool etatBouton0 = !raw0;
   bool etatBouton1 = !raw1;
   bool etatBouton2 = !raw2;
 
-  //Serial.printf("Bouton0: %d, Bouton1: %d, Bouton2: %d\n", etatBouton0, etatBouton1, etatBouton2);
+  Serial.printf("Bouton0: %d, Bouton1: %d, Bouton2: %d\n", etatBouton0, etatBouton1, etatBouton2);
   Serial.printf("Potentiometre: %d\n", potValue);
+  
+
+  // Control motor based on potentiometer value
+    ledcWrite(PWM_CHANNEL, potValue); //0 -> 2047
+    digitalWrite(26, etatBouton0 ? LOW : HIGH); // Set motor direction
+    digitalWrite(25, etatBouton1 ? LOW : HIGH); // Enable/Disable motor (active low)
 
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("B0:"); lcd.print(etatBouton0 ? "ON " : "OFF");
-  lcd.print(" B1:"); lcd.print(etatBouton1 ? "ON " : "OFF");
-
-  lcd.setCursor(0, 1);
-  lcd.print("B2:"); lcd.print(etatBouton2 ? "ON " : "OFF");
+  lcd.print("B0:"); lcd.print(potValue);
 
   delay(200);
 }
