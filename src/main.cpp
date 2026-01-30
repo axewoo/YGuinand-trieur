@@ -5,6 +5,8 @@
 ESP32Encoder encoder;
 
 rgb_lcd lcd;
+
+void vTaskPeriodic(void *pvParameters);
 const int PWM_CHANNEL = 0;     
 const int PWM_FREQ = 25000;      // 25 kHz frequency
 const int PWM_RESOLUTION = 11; // 11 bits of resolution: 0-2047
@@ -25,6 +27,7 @@ const unsigned long RETURN_DELAY = 3000;
 void posinit(void);
 
 void setup() {
+
   // Initialise la liaison avec le terminal
   Serial.begin(115200);
 
@@ -52,10 +55,14 @@ void setup() {
   ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
   ledcAttachPin(27, PWM_CHANNEL);
 
+xTaskCreate(vTaskPeriodic, "vTaskPeriodic", 10000, NULL, 2, NULL);
  posinit();
 }
 
 void loop() {
+
+
+
   // Read raw pins
   int raw0 = digitalRead(0);
   int raw1 = digitalRead(2);
@@ -69,11 +76,11 @@ void loop() {
 
   // Read encoder value
   int32_t encoderValue = encoder.getCount();
-
+/*
   // Serial output for encoder
   Serial.printf("Encoder: %d\n", encoderValue);
   Serial.printf("CNY70: %d\n", cnyValue);
-
+*/
   digitalWrite(25, etatBouton2 ? LOW : HIGH); 
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -91,7 +98,9 @@ if (etatBouton0 == 1) //Sens Horaire
     while (encoderValue > target)
     {
       digitalWrite(26, LOW); // Set direction
-      ledcWrite(PWM_CHANNEL, 600); // Higher speed
+      int distance = encoderValue - target;
+      int pwmSpeed = (distance > 30) ? 1200 : 200; // Fast until 30 units away, then slow
+      ledcWrite(PWM_CHANNEL, pwmSpeed);
       encoderValue = encoder.getCount();
     }
     ledcWrite(PWM_CHANNEL, 0); // Stop motor
@@ -102,7 +111,7 @@ if (etatBouton0 == 1) //Sens Horaire
   while (analogRead(36) < 2000)
   {
     digitalWrite(26, LOW); // Set direction
-    ledcWrite(PWM_CHANNEL, 600); // Higher speed
+    ledcWrite(PWM_CHANNEL, 620); // Slow speed for safety
     encoderValue = encoder.getCount();
   }
   ledcWrite(PWM_CHANNEL, 0); // Stop motor
@@ -117,7 +126,9 @@ if (etatBouton1 == 1) //Sens AntiHoraire
     while (encoderValue < target)
     {
       digitalWrite(26, HIGH); // Set direction
-      ledcWrite(PWM_CHANNEL, 620); // Higher speed
+      int distance = target - encoderValue;
+      int pwmSpeed = (distance > 30) ? 1200 : 200; // Fast until 30 units away, then slow
+      ledcWrite(PWM_CHANNEL, pwmSpeed);
       encoderValue = encoder.getCount();
     }
     ledcWrite(PWM_CHANNEL, 0); // Stop motor
@@ -128,7 +139,7 @@ if (etatBouton1 == 1) //Sens AntiHoraire
   while (analogRead(36) < 2000)
   {
     digitalWrite(26, HIGH); // Set direction
-    ledcWrite(PWM_CHANNEL, 620); // Higher speed
+    ledcWrite(PWM_CHANNEL, 620); // Slow speed for safety
     encoderValue = encoder.getCount();
   }
   ledcWrite(PWM_CHANNEL, 0); // Stop motor
@@ -155,4 +166,21 @@ void posinit(void){
   ledcWrite(PWM_CHANNEL, 0); // Stop motor
   encoder.setCount(0); // Reset encoder count
   return;
+}
+
+
+  void vTaskPeriodic(void *pvParameters)
+{
+TickType_t xLastWakeTime;
+// Lecture du nombre de ticks quand la tâche commence
+xLastWakeTime = xTaskGetTickCount();
+while (1)
+{
+Serial.printf("A répéter\n");
+// Endort la tâche pendant le temps restant par rapport au réveil,
+// ici 100ms, donc la tâche s'effectue ici toutes les 100ms.
+// xLastWakeTime sera mis à jour avec le nombre de ticks au prochain
+// réveil de la tâche.
+vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
+}
 }
