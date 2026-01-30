@@ -11,20 +11,12 @@ const int PWM_CHANNEL = 0;
 const int PWM_FREQ = 25000;      // 25 kHz frequency
 const int PWM_RESOLUTION = 11; // 11 bits of resolution: 0-2047
 
-const int PositionInitiale = 0;
-const int Position1 = 100;
-const int Position2 = 200;
-const int Position3 = 300;
-const int Position4 = 400;
-const int Position5 = 500;
-const int Position6 = 600;
-const int Position7 = 700;
-
 
 unsigned long lastMovementTime = 0;
 const unsigned long RETURN_DELAY = 3000; 
 
 void posinit(void);
+void posinitreverse(void);
 
 void setup() {
 
@@ -99,7 +91,7 @@ if (etatBouton0 == 1) //Sens Horaire
     {
       digitalWrite(26, LOW); // Set direction
       int distance = encoderValue - target;
-      int pwmSpeed = (distance > 30) ? 1200 : 200; // Fast until 30 units away, then slow
+      int pwmSpeed = (distance > 30) ? 1100 : 200; // Fast until 30 units away, then slow
       ledcWrite(PWM_CHANNEL, pwmSpeed);
       encoderValue = encoder.getCount();
     }
@@ -111,12 +103,13 @@ if (etatBouton0 == 1) //Sens Horaire
   while (analogRead(36) < 2000)
   {
     digitalWrite(26, LOW); // Set direction
-    ledcWrite(PWM_CHANNEL, 620); // Slow speed for safety
+      int distance = 90;
+      int pwmSpeed = (distance > 30) ? 900 : 10; // Fast until 30 units away, then slow
+      ledcWrite(PWM_CHANNEL, pwmSpeed);
     encoderValue = encoder.getCount();
   }
   ledcWrite(PWM_CHANNEL, 0); // Stop motor
   encoder.setCount(0); // Reset encoder count
-  
 }
 
 if (etatBouton1 == 1) //Sens AntiHoraire
@@ -127,7 +120,7 @@ if (etatBouton1 == 1) //Sens AntiHoraire
     {
       digitalWrite(26, HIGH); // Set direction
       int distance = target - encoderValue;
-      int pwmSpeed = (distance > 30) ? 1200 : 200; // Fast until 30 units away, then slow
+      int pwmSpeed = (distance > 30) ? 1100 : 200; // Fast until 30 units away, then slow
       ledcWrite(PWM_CHANNEL, pwmSpeed);
       encoderValue = encoder.getCount();
     }
@@ -139,8 +132,10 @@ if (etatBouton1 == 1) //Sens AntiHoraire
   while (analogRead(36) < 2000)
   {
     digitalWrite(26, HIGH); // Set direction
-    ledcWrite(PWM_CHANNEL, 620); // Slow speed for safety
-    encoderValue = encoder.getCount();
+      int distance = 90;
+      int pwmSpeed = (distance > 30) ? 900 : 10; // Fast until 30 units away, then slow
+      ledcWrite(PWM_CHANNEL, pwmSpeed);
+      encoderValue = encoder.getCount();
   }
   ledcWrite(PWM_CHANNEL, 0); // Stop motor
   encoder.setCount(0); // Reset encoder count
@@ -157,6 +152,20 @@ if (etatBouton1 == 1) //Sens AntiHoraire
 void posinit(void){
   digitalWrite(25, HIGH); // Enable motor
   digitalWrite(26, HIGH); // Set direction
+  
+  while (analogRead(36) < 2000){
+    ledcWrite(PWM_CHANNEL, 620); // Higher speed
+
+    delay(10); // Small delay to allow sensor reading
+  }
+  ledcWrite(PWM_CHANNEL, 0); // Stop motor
+  encoder.setCount(0); // Reset encoder count
+  return;
+}
+
+void posinitreverse(void){
+  digitalWrite(25, HIGH); // Enable motor
+  digitalWrite(26, LOW); // Set direction
   
   while (analogRead(36) < 2000){
     ledcWrite(PWM_CHANNEL, 620); // Higher speed
