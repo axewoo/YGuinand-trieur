@@ -9,6 +9,16 @@ const int PWM_CHANNEL = 0;     // ESP32 has 16 channels which can generate 16 in
 const int PWM_FREQ = 25000;      // Recall that Arduino Uno is ~490 Hz. Official ESP32 example uses 5,000Hz
 const int PWM_RESOLUTION = 11; // 11 bits of resolution: 0-2047
 
+const int PositionInitiale = 0;
+const int Position1 = 100;
+const int Position2 = 200;
+const int Position3 = 300;
+const int Position4 = 400;
+const int Position5 = 500;
+const int Position6 = 600;
+const int Position7 = 700;
+
+
 unsigned long lastMovementTime = 0;
 const unsigned long RETURN_DELAY = 3000; 
 
@@ -73,30 +83,86 @@ void loop() {
   lcd.setCursor(0, 1);
   lcd.print("CNY70:"); lcd.print(cnyValue);
 
-  if (etatBouton0 == 1) {
-    encoderValue = encoder.getCount();
-    while (encoderValue < 300)
+
+ 
+if (etatBouton0 == 1)
+{
+      while (encoderValue > -100)
+    {
+      digitalWrite(26, LOW); // Set direction
+      ledcWrite(PWM_CHANNEL, 600); // Higher speed
+      encoderValue = encoder.getCount();
+    }
+    ledcWrite(PWM_CHANNEL, 0); // Stop motor
+    delay(500); // Short delay between movements
+      while (encoderValue > -200)
+    {
+      digitalWrite(26, LOW); // Set direction
+      ledcWrite(PWM_CHANNEL, 600); // Higher speed
+      encoderValue = encoder.getCount();
+    }
+    ledcWrite(PWM_CHANNEL, 0); // Stop motor
+    delay(500); // Short delay between movements
+      while (encoderValue > -300)
+    {
+      digitalWrite(26, LOW); // Set direction
+      ledcWrite(PWM_CHANNEL, 600); // Higher speed
+      encoderValue = encoder.getCount();
+    }
+    ledcWrite(PWM_CHANNEL, 0); // Stop motor
+    delay(500); // Short delay between movements
+      while (encoderValue > -400)
+    {
+      digitalWrite(26, LOW); // Set direction
+      ledcWrite(PWM_CHANNEL, 600); // Higher speed
+      encoderValue = encoder.getCount();
+    }
+    ledcWrite(PWM_CHANNEL, 0); // Stop motor
+    delay(500); // Short delay between movements
+      while (encoderValue > -500)
+    {
+      digitalWrite(26, LOW); // Set direction
+      ledcWrite(PWM_CHANNEL, 600); // Higher speed
+      encoderValue = encoder.getCount();
+    }
+    ledcWrite(PWM_CHANNEL, 0); // Stop motor
+    delay(500); // Short delay between movements
+      while (encoderValue > -600)
+    {
+      digitalWrite(26, LOW); // Set direction
+      ledcWrite(PWM_CHANNEL, 600); // Higher speed
+      encoderValue = encoder.getCount();
+    }
+    ledcWrite(PWM_CHANNEL, 0); // Stop motor
+    delay(500); // Short delay between movements
+      while (encoderValue > -700)
+    {
+      digitalWrite(26, LOW); // Set direction
+      ledcWrite(PWM_CHANNEL, 600); // Higher speed
+      encoderValue = encoder.getCount();
+    }
+    ledcWrite(PWM_CHANNEL, 0); // Stop motor
+      delay(500); // Short delay between movements
+      while (analogRead(36) < 2000)
+    {
+      digitalWrite(26, LOW); // Set direction
+      ledcWrite(PWM_CHANNEL, 600); // Higher speed
+      encoderValue = encoder.getCount();
+    }
+      ledcWrite(PWM_CHANNEL, 0); // Stop motor
+      encoder.setCount(0); // Reset encoder count
+    delay(500); // Short delay between movements
+        while (encoderValue < 200) 
     {
       digitalWrite(26, HIGH); // Set direction
       ledcWrite(PWM_CHANNEL, 600); // Higher speed
       encoderValue = encoder.getCount();
     }
-    ledcWrite(PWM_CHANNEL, 0); // Stop motor
-    lastMovementTime = millis(); // Record when movement finished
-  }
-  if (etatBouton1 == 1) {
-    encoderValue = encoder.getCount();
-    while (encoderValue < 400)
-    {
-      digitalWrite(26, HIGH); // Set direction
-      ledcWrite(PWM_CHANNEL, 600); // Higher speed
-      encoderValue = encoder.getCount();
-    }
-    ledcWrite(PWM_CHANNEL, 0); // Stop motor
-    lastMovementTime = millis(); // Record when movement finished
-  }
-  
-  // Return to initial position after delay
+      ledcWrite(PWM_CHANNEL, 0); // Stop motor
+}
+
+
+// Return to initial position after delay
   if (lastMovementTime > 0 && (millis() - lastMovementTime) >= RETURN_DELAY) {
     posinit();
     lastMovementTime = 0; // Reset timer
@@ -111,13 +177,13 @@ void loop() {
 
 
 void posinit(void){
-  digitalWrite(25, HIGH); // Enable motor
-  digitalWrite(26, HIGH); // Set direction
-  
-  while (analogRead(36) < 2000){
-    ledcWrite(PWM_CHANNEL, 620); // Higher speed
+  digitalWrite(25, LOW); // Enable motor
 
-    delay(10); // Small delay to allow sensor reading
+  while (analogRead(36) < 2000 ) // Move until CNY70 sensor is triggered
+  {
+    digitalWrite(26, HIGH); // Set direction
+    ledcWrite(PWM_CHANNEL, 630); // Speed
+    delay(10);
   }
   ledcWrite(PWM_CHANNEL, 0); // Stop motor
   encoder.setCount(0); // Reset encoder count
