@@ -1,12 +1,13 @@
 #include <Arduino.h>
 #include "rgb_lcd.h"
 #include <ESP32Encoder.h>
+#include <Wire.h>
+#include "Adafruit_TCS34725.h"
 
 ESP32Encoder encoder;
-
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
 rgb_lcd lcd;
 
-void vTaskPeriodic(void *pvParameters);
 const int PWM_CHANNEL = 0;     
 const int PWM_FREQ = 25000;      // 25 kHz frequency
 const int PWM_RESOLUTION = 11; // 11 bits of resolution: 0-2047
@@ -25,8 +26,9 @@ void setup() {
 
   // Initialise l'écran LCD
   Wire1.setPins(15, 5);
+  Wire.begin(21,22); //SDA, SCL
   lcd.begin(16, 2, LCD_5x8DOTS, Wire1);
-  lcd.setRGB(0, 20, 100);
+  lcd.setRGB(0, 0, 0);
 
   // Initialise les entrées/sorties (enable internal pull-ups)
   pinMode(0, INPUT_PULLUP); // Bouton0 (active low)
@@ -37,7 +39,8 @@ void setup() {
   pinMode(27, OUTPUT); //PWM 
   pinMode(26, OUTPUT); //Signal Sens
   pinMode(25, OUTPUT); //Motor Disable
-  
+  pinMode(13, OUTPUT); //Servo Motor
+
   pinMode(36, INPUT); //Capteur CNY70
 
   encoder.attachFullQuad(23, 19);
@@ -46,14 +49,18 @@ void setup() {
   // Configure PWM on pin 27: 25 kHz, 8-bit resolution (0-255)
   ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
   ledcAttachPin(27, PWM_CHANNEL);
+  if (tcs.begin()) {
+    Serial.println("Found sensor");
+  } else {
+    Serial.println("No TCS34725 found ... check your connections");
+    while (1);
+  }
 
-xTaskCreate(vTaskPeriodic, "vTaskPeriodic", 10000, NULL, 2, NULL);
  posinit();
 }
 
 void loop() {
-
-
+  uint16_t r, g, b, c, colorTemp, lux;
 
   // Read raw pins
   int raw0 = digitalRead(0);
@@ -68,93 +75,129 @@ void loop() {
 
   // Read encoder value
   int32_t encoderValue = encoder.getCount();
-/*
-  // Serial output for encoder
-  Serial.printf("Encoder: %d\n", encoderValue);
-  Serial.printf("CNY70: %d\n", cnyValue);
-*/
-  digitalWrite(25, etatBouton2 ? LOW : HIGH); 
+  lcd.setRGB(0, 0, 0);
   lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Po:"); lcd.print(potValue);
-  lcd.print(" Enc:"); lcd.print(encoderValue);
-  lcd.setCursor(0, 1);
-  lcd.print("CNY70:"); lcd.print(cnyValue);
 
-
- 
-if (etatBouton0 == 1) //Sens Horaire
+if (etatBouton1 == 1) //Mesure de couleur
 {
-  for (int target = -100; target >= -700; target -= 100)
-  {
-    while (encoderValue > target)
+
+    while (encoderValue > -150)
     {
       digitalWrite(26, LOW); // Set direction
-      int distance = encoderValue - target;
-      int pwmSpeed = (distance > 30) ? 1100 : 200; // Fast until 30 units away, then slow
+      int distance = encoderValue - -150;
+      int pwmSpeed = (distance > 30) ? 700 : 250; // Fast until 30 units away, then slow
       ledcWrite(PWM_CHANNEL, pwmSpeed);
       encoderValue = encoder.getCount();
     }
     ledcWrite(PWM_CHANNEL, 0); // Stop motor
+    encoder.setCount(0);
     delay(500); // Short delay between movements
-  }
-  
-  // Move down until analog sensor triggers
-  while (analogRead(36) < 2000)
-  {
-    digitalWrite(26, LOW); // Set direction
-      int distance = 90;
-      int pwmSpeed = (distance > 30) ? 900 : 10; // Fast until 30 units away, then slow
-      ledcWrite(PWM_CHANNEL, pwmSpeed);
-    encoderValue = encoder.getCount();
-  }
-  ledcWrite(PWM_CHANNEL, 0); // Stop motor
-  encoder.setCount(0); // Reset encoder count
-}
 
-if (etatBouton1 == 1) //Sens AntiHoraire
-{
-  for (int target = 100; target <= 700; target += 100)
-  {
-    while (encoderValue < target)
+    while (encoderValue < 670)
     {
       digitalWrite(26, HIGH); // Set direction
-      int distance = target - encoderValue;
-      int pwmSpeed = (distance > 30) ? 1100 : 200; // Fast until 30 units away, then slow
+      int distance = 700 -encoderValue;
+      int pwmSpeed = (distance > 50) ? 650 : 300; // Fast until 30 units away, then slow
+      ledcWrite(PWM_CHANNEL, pwmSpeed);
+      encoderValue = encoder.getCount();
+    }
+    ledcWrite(PWM_CHANNEL, 0); // Stop motor
+    delay(500); // Short delay between movements  
+  posinitreverse();
+    while (encoderValue > -150)
+    {
+      digitalWrite(26, LOW); // Set direction
+      int distance = encoderValue - -150;
+      int pwmSpeed = (distance > 30) ? 700 : 250; // Fast until 30 units away, then slow
+      ledcWrite(PWM_CHANNEL, pwmSpeed);
+      encoderValue = encoder.getCount();
+    }
+    ledcWrite(PWM_CHANNEL, 0); // Stop motor
+    encoder.setCount(0);
+    delay(500); // Short delay between movements
+  posinit();
+    int i = 0;
+    while(i!=5)
+    {
+      tcs.getRawData(&r, &g, &b, &c);
+      colorTemp = tcs.calculateColorTemperature_dn40(r, g, b, c);
+        Serial.print("Color Temp: "); Serial.print(colorTemp, DEC); Serial.print(" K - ");
+        Serial.println(" ");
+        lcd.setRGB(0, 20, 100);
+        lcd.setCursor(0, 0);
+        lcd.print("Color Temp:");
+        lcd.print(colorTemp);
+
+      i++;
+      delay(1000);
+    }
+    if (colorTemp<=6000)
+    {
+      lcd.setRGB(255, 0, 0); // Red for low color temperature
+      lcd.setCursor(0, 1);
+      lcd.print("Autre Balle");
+          while (encoderValue < 650)
+    {
+      digitalWrite(26, HIGH); // Set direction
+      int distance = 650 -encoderValue;
+      int pwmSpeed = (distance > 40) ? 650 : 300; // Fast until 30 units away, then slow
+      ledcWrite(PWM_CHANNEL, pwmSpeed);
+      encoderValue = encoder.getCount();
+    }
+    ledcWrite(PWM_CHANNEL, 0); // Stop motor
+    delay(500); // Short delay between movements  
+    posinitreverse();
+        while (encoderValue > -50)
+    {
+      digitalWrite(26, LOW); // Set direction
+      int distance = encoderValue - -50;
+      int pwmSpeed = (distance > 30) ? 700 : 250; // Fast until 30 units away, then slow
+      ledcWrite(PWM_CHANNEL, pwmSpeed);
+      encoderValue = encoder.getCount();
+    }
+    ledcWrite(PWM_CHANNEL, 0); // Stop motor
+    encoder.setCount(0);
+    delay(500); // Short delay between movements
+    posinit();
+    }
+    else if (colorTemp>6000)
+    {
+      lcd.setRGB(0, 150, 20); // Green for white ball
+      lcd.setCursor(0, 1);
+      lcd.print("Balle Blanche !");
+          while (encoderValue < 750)
+    {
+      digitalWrite(26, HIGH); // Set direction
+      int distance = 750 -encoderValue;
+      int pwmSpeed = (distance > 40) ? 650 : 300; // Fast until 30 units away, then slow
       ledcWrite(PWM_CHANNEL, pwmSpeed);
       encoderValue = encoder.getCount();
     }
     ledcWrite(PWM_CHANNEL, 0); // Stop motor
     delay(500); // Short delay between movements
-  }
-  
-  // Move until CNY70 triggers
-  while (analogRead(36) < 2000)
-  {
-    digitalWrite(26, HIGH); // Set direction
-      int distance = 90;
-      int pwmSpeed = (distance > 30) ? 900 : 10; // Fast until 30 units away, then slow
+    encoder.setCount(0);
+          while (encoderValue > -650)
+    {
+      digitalWrite(26, LOW); // Set direction
+      int distance = encoderValue- -650;
+      int pwmSpeed = (distance > 40) ? 650 : 300; // Fast until 30 units away, then slow
       ledcWrite(PWM_CHANNEL, pwmSpeed);
       encoderValue = encoder.getCount();
-  }
-  ledcWrite(PWM_CHANNEL, 0); // Stop motor
-  encoder.setCount(0); // Reset encoder count
+    }
+    while (analogRead(36)>2000)
+    {}
+    posinit();
+    posinitreverse();
+    }
 }
-
-
-  if (cnyValue > 2000){
-    encoder.setCount(0); // Reset encoder count
-  }
-  delay(100);
 }
-
 
 void posinit(void){
   digitalWrite(25, HIGH); // Enable motor
   digitalWrite(26, HIGH); // Set direction
   
   while (analogRead(36) < 2000){
-    ledcWrite(PWM_CHANNEL, 620); // Higher speed
+    ledcWrite(PWM_CHANNEL, 650); // Higher speed
 
     delay(10); // Small delay to allow sensor reading
   }
@@ -168,7 +211,7 @@ void posinitreverse(void){
   digitalWrite(26, LOW); // Set direction
   
   while (analogRead(36) < 2000){
-    ledcWrite(PWM_CHANNEL, 620); // Higher speed
+    ledcWrite(PWM_CHANNEL, 650); // Higher speed
 
     delay(10); // Small delay to allow sensor reading
   }
@@ -177,19 +220,3 @@ void posinitreverse(void){
   return;
 }
 
-
-  void vTaskPeriodic(void *pvParameters)
-{
-TickType_t xLastWakeTime;
-// Lecture du nombre de ticks quand la tâche commence
-xLastWakeTime = xTaskGetTickCount();
-while (1)
-{
-Serial.printf("A répéter\n");
-// Endort la tâche pendant le temps restant par rapport au réveil,
-// ici 100ms, donc la tâche s'effectue ici toutes les 100ms.
-// xLastWakeTime sera mis à jour avec le nombre de ticks au prochain
-// réveil de la tâche.
-vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
-}
-}
