@@ -1,16 +1,19 @@
 #include <Arduino.h>
 #include "rgb_lcd.h"
 #include <ESP32Encoder.h>
+#include <ESP32Servo.h>
 #include <Wire.h>
 #include "Adafruit_TCS34725.h"
 
 ESP32Encoder encoder;
+Servo myservo;
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
 rgb_lcd lcd;
 
 const int PWM_CHANNEL = 0;     
 const int PWM_FREQ = 25000;      // 25 kHz frequency
 const int PWM_RESOLUTION = 11; // 11 bits of resolution: 0-2047
+const int servoPin = 13; // Pin connected to the servo signal wire
 
 
 unsigned long lastMovementTime = 0;
@@ -56,6 +59,11 @@ void setup() {
     while (1);
   }
 
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+  myservo.setPeriodHertz(50);
+  myservo.attach(servoPin);
  posinit();
 }
 
@@ -66,7 +74,7 @@ void loop() {
   int raw0 = digitalRead(0);
   int raw1 = digitalRead(2);
   int raw2 = digitalRead(12);
-  int potValue = (analogRead(33)/2);
+  int potValue = (analogRead(33)); // Map potentiometer value to 0-180 degrees for servo control
   int cnyValue = analogRead(36);
 
   bool etatBouton0 = !raw0;
@@ -77,6 +85,7 @@ void loop() {
   int32_t encoderValue = encoder.getCount();
   lcd.setRGB(0, 0, 0);
   lcd.clear();
+  myservo.write(88);
 
 if (etatBouton1 == 1) //Mesure de couleur
 {
@@ -157,6 +166,10 @@ if (etatBouton1 == 1) //Mesure de couleur
     }
     ledcWrite(PWM_CHANNEL, 0); // Stop motor
     encoder.setCount(0);
+      myservo.write(50);
+      delay(1000);
+      myservo.write(88);
+
     delay(500); // Short delay between movements
     posinit();
     }
@@ -190,6 +203,8 @@ if (etatBouton1 == 1) //Mesure de couleur
     posinitreverse();
     }
 }
+
+posinit();
 }
 
 void posinit(void){
@@ -199,7 +214,7 @@ void posinit(void){
   while (analogRead(36) < 2000){
     ledcWrite(PWM_CHANNEL, 650); // Higher speed
 
-    delay(10); // Small delay to allow sensor reading
+    delay(1); // Small delay to allow sensor reading
   }
   ledcWrite(PWM_CHANNEL, 0); // Stop motor
   encoder.setCount(0); // Reset encoder count
@@ -213,7 +228,7 @@ void posinitreverse(void){
   while (analogRead(36) < 2000){
     ledcWrite(PWM_CHANNEL, 650); // Higher speed
 
-    delay(10); // Small delay to allow sensor reading
+    delay(1); // Small delay to allow sensor reading
   }
   ledcWrite(PWM_CHANNEL, 0); // Stop motor
   encoder.setCount(0); // Reset encoder count
