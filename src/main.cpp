@@ -4,7 +4,10 @@
 #include <ESP32Servo.h>
 #include <Wire.h>
 #include "Adafruit_TCS34725.h"
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
 
+Adafruit_MPU6050 mpu;
 ESP32Encoder encoder;
 Servo myservo;
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
@@ -53,18 +56,33 @@ void setup() {
   ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
   ledcAttachPin(27, PWM_CHANNEL);
   if (tcs.begin()) {
-    Serial.println("Found sensor");
+    Serial.println("TCS34725 Found");
   } else {
-    Serial.println("No TCS34725 found ... check your connections");
+    Serial.println("No TCS34725 found");
     while (1);
   }
-
+  if (!mpu.begin()) {
+    Serial.println("Failed to find MPU6050 chip");
+    while (1) {
+      delay(10);
+    }
+  }
+  Serial.println("MPU6050 Found");
   ESP32PWM::allocateTimer(1);
   ESP32PWM::allocateTimer(2);
   ESP32PWM::allocateTimer(3);
   myservo.setPeriodHertz(50);
   myservo.attach(servoPin);
+
+  mpu.setHighPassFilter(MPU6050_HIGHPASS_0_63_HZ);
+  mpu.setMotionDetectionThreshold(1);
+  mpu.setMotionDetectionDuration(20);
+  mpu.setInterruptPinLatch(true);	// Keep it latched.  Will turn off when reinitialized.
+  mpu.setInterruptPinPolarity(true);
+  mpu.setMotionInterrupt(true);
+
  posinit();
+ myservo.write(88); // Move servo to 90 degrees (neutral position)
 }
 
 void loop() {
@@ -85,7 +103,6 @@ void loop() {
   int32_t encoderValue = encoder.getCount();
   lcd.setRGB(0, 0, 0);
   lcd.clear();
-  myservo.write(88);
 
 if (etatBouton1 == 1) //Mesure de couleur
 {
@@ -166,9 +183,29 @@ if (etatBouton1 == 1) //Mesure de couleur
     }
     ledcWrite(PWM_CHANNEL, 0); // Stop motor
     encoder.setCount(0);
-      myservo.write(50);
+
+      // Store original servo position
+      int originalAngle = 88; // Default neutral position
+      
+      // Read MPU6050 accelerometer for servo control (eject)
+      sensors_event_t a, g, temp;
+      mpu.getEvent(&a, &g, &temp);
+      
+      // Map acceleration X to servo angle (0-180)
+      // Assuming accel range is approximately -20 to +20 m/s^2
+      float accelX = a.acceleration.x;
+      int servoAngle = (int)((accelX + 20) / 40.0 * 180);
+      servoAngle = constrain(servoAngle, 0, 180); // Constrain to valid range
+      
+      // Store the angle we're about to move to
+      originalAngle = servoAngle;
+      
+      myservo.write(servoAngle);
       delay(1000);
+      
+      // Return to original position using stored angle
       myservo.write(88);
+      delay(1000);
 
     delay(500); // Short delay between movements
     posinit();
@@ -204,7 +241,7 @@ if (etatBouton1 == 1) //Mesure de couleur
     }
 }
 
-posinit();
+
 }
 
 void posinit(void){
@@ -214,7 +251,7 @@ void posinit(void){
   while (analogRead(36) < 2000){
     ledcWrite(PWM_CHANNEL, 650); // Higher speed
 
-    delay(1); // Small delay to allow sensor reading
+    delay(10); // Small delay to allow sensor reading
   }
   ledcWrite(PWM_CHANNEL, 0); // Stop motor
   encoder.setCount(0); // Reset encoder count
@@ -228,7 +265,7 @@ void posinitreverse(void){
   while (analogRead(36) < 2000){
     ledcWrite(PWM_CHANNEL, 650); // Higher speed
 
-    delay(1); // Small delay to allow sensor reading
+    delay(10); // Small delay to allow sensor reading
   }
   ledcWrite(PWM_CHANNEL, 0); // Stop motor
   encoder.setCount(0); // Reset encoder count
