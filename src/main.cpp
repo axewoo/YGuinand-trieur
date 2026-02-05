@@ -196,15 +196,12 @@ if (etatBouton1 == 1) //Mesure de couleur
       float accelX = a.acceleration.x;
       int servoAngle = (int)((accelX + 20) / 40.0 * 180);
       servoAngle = constrain(servoAngle, 0, 180); // Constrain to valid range
-      
-      // Store the angle we're about to move to
-      originalAngle = servoAngle;
-      
+            
       myservo.write(servoAngle);
       delay(1000);
       
       // Return to original position using stored angle
-      myservo.write(88);
+      myservo.write(originalAngle);
       delay(1000);
 
     delay(500); // Short delay between movements
